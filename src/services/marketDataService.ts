@@ -6,8 +6,16 @@ const ALPHA_VANTAGE_KEY = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY;
 const ALPHA_VANTAGE_URL = 'https://www.alphavantage.co/query';
 
 export class MarketDataService {
-  // Market data for development/demo
+  private static cache = new Map<string, { data: MarketData; timestamp: number }>();
+  private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
   static async getMarketData(pair: TradingPair = 'XAUUSD'): Promise<MarketData> {
+    const cacheKey = `marketData_${pair}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.data;
+    }
+
     try {
       if (!ALPHA_VANTAGE_KEY) {
         return this.getMockMarketData(pair);
@@ -16,14 +24,19 @@ export class MarketDataService {
       // Fetch real data from Alpha Vantage
       const realData = await this.fetchRealTimeData(pair);
       if (realData && realData.price) {
+        this.cache.set(cacheKey, { data: realData, timestamp: Date.now() });
         return realData;
       }
 
       // Fallback to mock if real data fails
-      return this.getMockMarketData(pair);
+      const mockData = this.getMockMarketData(pair);
+      this.cache.set(cacheKey, { data: mockData, timestamp: Date.now() });
+      return mockData;
     } catch (error) {
       console.error('Error fetching market data:', error);
-      return this.getMockMarketData(pair);
+      const mockData = this.getMockMarketData(pair);
+      this.cache.set(cacheKey, { data: mockData, timestamp: Date.now() });
+      return mockData;
     }
   }
 

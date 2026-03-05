@@ -5,7 +5,16 @@ const ALPHA_VANTAGE_KEY = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY;
 const ALPHA_VANTAGE_URL = 'https://www.alphavantage.co/query';
 
 export class NewsService {
+  private static cache = new Map<string, { data: NewsItem[]; timestamp: number }>();
+  private static readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
   static async getLatestNews(pair: string = 'forex'): Promise<NewsItem[]> {
+    const cacheKey = `news_${pair}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.data;
+    }
+
     try {
       if (!ALPHA_VANTAGE_KEY) {
         return this.getMockNews();
@@ -22,16 +31,21 @@ export class NewsService {
       const feed = response.data.feed;
       if (!feed) return this.getMockNews();
 
-      return feed.slice(0, 5).map((item: any) => ({
+      const newsData = feed.slice(0, 5).map((item: any) => ({
         title: item.title,
         summary: item.summary,
         url: item.url,
         source: item.source,
         timestamp: item.time_published,
       }));
+
+      this.cache.set(cacheKey, { data: newsData, timestamp: Date.now() });
+      return newsData;
     } catch (error) {
       console.error('Error fetching news:', error);
-      return this.getMockNews();
+      const mockData = this.getMockNews();
+      this.cache.set(cacheKey, { data: mockData, timestamp: Date.now() });
+      return mockData;
     }
   }
 
