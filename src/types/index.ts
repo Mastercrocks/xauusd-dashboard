@@ -42,11 +42,12 @@ export interface TimeframeAnalysis {
 
 export type TradingPair = 'XAUUSD' | 'EURUSD' | 'GBPUSD' | 'USDJPY' | 'AUDUSD' | 'BTCUSD' | 'NZDUSD' | 'USDCAD';
 
-export interface PairConfig {
-  symbol: TradingPair;
-  name: string;
-  currentPrice: number;
-  description: string;
-  color: string;
+export interface NewsItem {
+  title: string;
+  summary: string;
+  url: string;
+  source: string;
+  timestamp: string;
+}
   volatilityFactor: number; // Multiplier for ATR and stops
 }

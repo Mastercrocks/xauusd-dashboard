@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { AnalysisResult, MarketData, MacroData, SentimentData, TimeframeAnalysis, TradingPair } from '../types';
+import { AnalysisResult, MarketData, MacroData, SentimentData, TimeframeAnalysis, TradingPair, NewsItem } from '../types';
 import { AIAnalysisService } from '../services/aiAnalysisService';
 import { MarketDataService } from '../services/marketDataService';
+import { NewsService } from '../services/newsService';
 import { PAIR_LIST, getPairConfig } from '../config/pairsConfig';
 import '../styles/dashboard.css';
 
@@ -10,6 +11,7 @@ export const Dashboard: React.FC = () => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [timeframeAnalysis, setTimeframeAnalysis] = useState<TimeframeAnalysis[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +39,9 @@ export const Dashboard: React.FC = () => {
 
         const timeframes = await MarketDataService.getTimeframeAnalysis();
         setTimeframeAnalysis(timeframes);
+
+        const newsData = await NewsService.getLatestNews(selectedPair);
+        setNews(newsData);
 
         const result = await AIAnalysisService.analyzeMarket(
           data,
@@ -243,6 +248,20 @@ export const Dashboard: React.FC = () => {
               </div>
             </>
           )}
+
+          {/* News Section */}
+          <div className="news-section">
+            <h2>Latest News</h2>
+            <div className="news-list">
+              {news.map((item, index) => (
+                <div key={index} className="news-item">
+                  <h4><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a></h4>
+                  <p>{item.summary}</p>
+                  <small>{item.source} - {new Date(item.timestamp).toLocaleString()}</small>
+                </div>
+              ))}
+            </div>
+          </div>
         </>
       )}
     </div>
