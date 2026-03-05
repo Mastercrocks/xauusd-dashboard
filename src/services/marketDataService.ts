@@ -80,8 +80,8 @@ export class MarketDataService {
       if (!data) return null;
 
       const price = parseFloat(data['05. price']);
-      const change = parseFloat(data['09. change']);
-      const changePercent = parseFloat(data['10. change percent'].replace('%', ''));
+      // const change = parseFloat(data['09. change']); // Not used
+      // const changePercent = parseFloat(data['10. change percent'].replace('%', '')); // Not used
 
       // Calculate mock-like values since Alpha Vantage doesn't provide RSI/MA
       const pairConfig = getPairConfig(symbol as TradingPair);
