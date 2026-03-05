@@ -4,7 +4,7 @@ export const TRADING_PAIRS: Record<TradingPair, PairConfig> = {
   XAUUSD: {
     symbol: 'XAUUSD',
     name: 'Gold vs US Dollar',
-    currentPrice: 5089.50,
+    currentPrice: 2450.00,
     description: 'Precious Metal - Safe Haven Asset',
     color: '#FFD700',
     volatilityFactor: 1.5, // Higher volatility
@@ -20,7 +20,7 @@ export const TRADING_PAIRS: Record<TradingPair, PairConfig> = {
   GBPUSD: {
     symbol: 'GBPUSD',
     name: 'British Pound vs US Dollar',
-    currentPrice: 1.2650,
+    currentPrice: 1.2750,
     description: 'Major Currency Pair',
     color: '#FF6347',
     volatilityFactor: 1.1,
@@ -28,7 +28,7 @@ export const TRADING_PAIRS: Record<TradingPair, PairConfig> = {
   USDJPY: {
     symbol: 'USDJPY',
     name: 'US Dollar vs Japanese Yen',
-    currentPrice: 148.50,
+    currentPrice: 150.50,
     description: 'Major Currency Pair - Risk Sentiment',
     color: '#FF69B4',
     volatilityFactor: 0.9,
@@ -36,7 +36,7 @@ export const TRADING_PAIRS: Record<TradingPair, PairConfig> = {
   AUDUSD: {
     symbol: 'AUDUSD',
     name: 'Australian Dollar vs US Dollar',
-    currentPrice: 0.6650,
+    currentPrice: 0.6750,
     description: 'Commodity Currency - Risk Sensitive',
     color: '#00CED1',
     volatilityFactor: 1.0,
@@ -44,7 +44,7 @@ export const TRADING_PAIRS: Record<TradingPair, PairConfig> = {
   BTCUSD: {
     symbol: 'BTCUSD',
     name: 'Bitcoin vs US Dollar',
-    currentPrice: 42500.00,
+    currentPrice: 60000.00,
     description: 'Cryptocurrency - High Volatility',
     color: '#F7931A',
     volatilityFactor: 2.0,
