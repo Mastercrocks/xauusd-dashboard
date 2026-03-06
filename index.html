@@ -24,7 +24,9 @@
   --text-dim: #4A6282;
   --text-mid: #7A95B0;
 }
+
 * { margin:0; padding:0; box-sizing:border-box; }
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -32,6 +34,8 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
+
+/* Noise texture overlay */
 body::after {
   content:'';
   position:fixed;
@@ -41,6 +45,8 @@ body::after {
   z-index:999;
   opacity:0.4;
 }
+
+/* Scanlines */
 body::before {
   content:'';
   position:fixed;
@@ -55,6 +61,7 @@ body::before {
   pointer-events:none;
   z-index:998;
 }
+
 .wrap {
   position:relative;
   z-index:1;
@@ -62,9 +69,944 @@ body::before {
   margin:0 auto;
   padding:20px 18px 40px;
 }
-/* ...rest of CSS and HTML as provided by user... */
+
+/* ─── TOPBAR ─── */
+.topbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 18px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin-bottom:16px;
+  font-size:0.6rem;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--text-dim);
+}
+
+.topbar-left { display:flex; align-items:center; gap:20px; }
+.topbar-brand { font-family:'Bebas Neue', sans-serif; font-size:1rem; color:var(--gold); letter-spacing:4px; }
+
+.live-badge {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--green);
+  font-size:0.58rem;
+}
+
+.live-dot {
+  width:6px; height:6px;
+  background:var(--green);
+  border-radius:50%;
+  box-shadow:0 0 8px var(--green);
+  animation: livepulse 2s ease-in-out infinite;
+}
+
+@keyframes livepulse {
+  0%,100% { opacity:1; box-shadow:0 0 8px var(--green); }
+  50% { opacity:0.5; box-shadow:0 0 2px var(--green); }
+}
+
+#last-updated { color:var(--text-dim); font-size:0.58rem; }
+
+/* ─── HERO ROW ─── */
+.hero {
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:24px;
+  padding:22px 24px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  margin-bottom:14px;
+  position:relative;
+  overflow:hidden;
+}
+
+.hero::before {
+  content:'XAUUSD';
+  position:absolute;
+  right:-10px; top:-20px;
+  font-family:'Bebas Neue', sans-serif;
+  font-size:8rem;
+  color:rgba(240,180,41,0.03);
+  pointer-events:none;
+  letter-spacing:-2px;
+}
+
+.pair-name {
+  font-family:'Bebas Neue', sans-serif;
+  font-size:3rem;
+  letter-spacing:2px;
+  line-height:1;
+}
+
+.pair-name .xau { color:var(--gold-bright); }
+.pair-name .slash { color:var(--border2); margin:0 2px; }
+.pair-name .usd { color:var(--text-dim); }
+.pair-sub {
+  font-size:0.55rem;
+  color:var(--text-dim);
+  letter-spacing:3px;
+  margin-top:5px;
+}
+
+.price-hero {
+  text-align:center;
+}
+
+#live-price {
+  font-family:'Bebas Neue', sans-serif;
+  font-size:3.5rem;
+  color:var(--gold);
+  letter-spacing:-1px;
+  line-height:1;
+  transition: color 0.3s;
+}
+
+#price-change {
+  font-size:0.7rem;
+  margin-top:4px;
+  font-weight:500;
+}
+
+#price-range {
+  font-size:0.58rem;
+  color:var(--text-dim);
+  margin-top:3px;
+}
+
+.hero-right {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
+}
+
+.bias-chip {
+  font-family:'Bebas Neue', sans-serif;
+  font-size:1.4rem;
+  letter-spacing:3px;
+  padding:6px 18px;
+  border-radius:6px;
+  border:1px solid;
+}
+
+.bias-bullish { color:var(--green); border-color:rgba(6,214,160,0.3); background:rgba(6,214,160,0.07); }
+.bias-bearish { color:var(--red); border-color:rgba(239,71,111,0.3); background:rgba(239,71,111,0.07); }
+.bias-neutral { color:var(--gold); border-color:rgba(240,180,41,0.3); background:rgba(240,180,41,0.07); }
+
+.conf-wrap { text-align:right; }
+.conf-label { font-size:0.55rem; color:var(--text-dim); letter-spacing:2px; margin-bottom:4px; }
+.conf-num {
+  font-family:'Bebas Neue', sans-serif;
+  font-size:2rem;
+  color:var(--gold);
+  line-height:1;
+}
+.conf-sub { font-size:0.55rem; color:var(--text-dim); }
+
+/* ─── GRID ─── */
+.g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.g2 { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:12px; }
+.g12 { display:grid; grid-template-columns:1fr 2fr; gap:12px; margin-bottom:12px; }
+
+/* ─── CARD ─── */
+.card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:16px 18px;
+  position:relative;
+  overflow:hidden;
+}
+
+.card-head {
+  font-size:0.55rem;
+  text-transform:uppercase;
+  letter-spacing:3px;
+  color:var(--text-dim);
+  margin-bottom:12px;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.card-head-icon { font-size:0.7rem; }
+
+/* ─── LOADING STATE ─── */
+.loading-overlay {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:30px 0;
+  gap:12px;
+  color:var(--text-dim);
+  font-size:0.65rem;
+  letter-spacing:2px;
+}
+
+.spinner {
+  width:28px; height:28px;
+  border:2px solid var(--border2);
+  border-top-color:var(--gold);
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ─── MACRO ROWS ─── */
+.macro-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:7px 0;
+  border-bottom:1px solid rgba(26,37,53,0.6);
+}
+.macro-row:last-child { border-bottom:none; }
+.macro-name-wrap { display:flex; flex-direction:column; gap:2px; }
+.macro-name { font-size:0.65rem; color:var(--text); }
+.macro-val { font-size:0.58rem; color:var(--text-dim); }
+.sig {
+  display:flex; align-items:center; gap:5px;
+  font-size:0.6rem; font-weight:500;
+}
+.dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.bull { color:var(--green); } .dot-bull { background:var(--green); box-shadow:0 0 5px var(--green); }
+.bear { color:var(--red); } .dot-bear { background:var(--red); box-shadow:0 0 5px var(--red); }
+.neut { color:var(--gold); } .dot-neut { background:var(--gold); box-shadow:0 0 5px var(--gold); }
+
+/* ─── TECH ROWS ─── */
+.tech-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:7px 0; border-bottom:1px solid rgba(26,37,53,0.6);
+}
+.tech-row:last-child { border-bottom:none; }
+.tech-lbl { font-size:0.63rem; color:var(--text-dim); }
+.tech-v { font-size:0.68rem; font-weight:500; }
+.badge {
+  font-size:0.52rem; padding:2px 7px; border-radius:3px; font-weight:700; letter-spacing:1px;
+}
+.badge-bull { background:rgba(6,214,160,0.1); color:var(--green); border:1px solid rgba(6,214,160,0.2); }
+.badge-bear { background:rgba(239,71,111,0.1); color:var(--red); border:1px solid rgba(239,71,111,0.2); }
+.badge-neut { background:rgba(240,180,41,0.1); color:var(--gold); border:1px solid rgba(240,180,41,0.2); }
+
+/* ─── GAUGE ─── */
+.gauge-center { display:flex; flex-direction:column; align-items:center; padding:4px 0; }
+.gauge-num {
+  font-family:'Bebas Neue', sans-serif;
+  font-size:2.8rem;
+  line-height:1;
+  margin-top:-4px;
+}
+.gauge-lbl { font-size:0.55rem; color:var(--text-dim); letter-spacing:2px; margin-top:2px; }
+
+/* ─── CONF BAR ─── */
+.cbar-track { height:6px; background:var(--bg4); border-radius:3px; overflow:hidden; margin:6px 0 3px; }
+.cbar-fill {
+  height:100%; border-radius:3px;
+  background:linear-gradient(90deg, var(--gold-dim), var(--gold-bright));
+  box-shadow:0 0 10px rgba(240,180,41,0.3);
+  transition:width 1.6s cubic-bezier(0.25,1,0.5,1);
+  width:0;
+}
+
+/* ─── SENTIMENT BARS ─── */
+.sbar { margin-bottom:11px; }
+.sbar-head { display:flex; justify-content:space-between; margin-bottom:4px; }
+.sbar-name { font-size:0.6rem; color:var(--text-mid); }
+.sbar-val { font-size:0.6rem; font-weight:500; }
+.sbar-track { height:4px; background:var(--bg4); border-radius:2px; overflow:hidden; }
+.sbar-fill { height:100%; border-radius:2px; transition:width 1.8s cubic-bezier(0.25,1,0.5,1); width:0; }
+
+/* ─── LEVELS VIZ ─── */
+.levels-viz {
+  position:relative; height:220px;
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:8px; overflow:hidden; margin-top:4px;
+}
+.lvl-line {
+  position:absolute; left:0; right:0;
+  height:1px; display:flex; align-items:center;
+}
+.lvl-inner { flex:1; height:1px; }
+.lvl-tag {
+  font-size:0.52rem; font-weight:700; padding:2px 5px;
+  border-radius:3px; white-space:nowrap; margin-right:6px;
+  font-family:'DM Mono', monospace;
+}
+.lvl-px { font-size:0.55rem; margin-left:6px; font-family:'DM Mono', monospace; }
+
+/* level colors */
+.lv-res .lvl-inner { background:rgba(239,71,111,0.35); }
+.lv-res .lvl-tag { background:rgba(239,71,111,0.12); color:var(--red); }
+.lv-res .lvl-px { color:var(--red); }
+.lv-spot .lvl-inner { background:var(--gold); box-shadow:0 0 8px var(--gold); }
+.lv-spot .lvl-tag { background:rgba(240,180,41,0.18); color:var(--gold-bright); }
+.lv-spot .lvl-px { color:var(--gold-bright); }
+.lv-sup .lvl-inner { background:rgba(6,214,160,0.35); }
+.lv-sup .lvl-tag { background:rgba(6,214,160,0.08); color:var(--green); }
+.lv-sup .lvl-px { color:var(--green); }
+.lv-sl .lvl-inner { background:rgba(239,71,111,0.6); }
+.lv-sl .lvl-tag { background:rgba(239,71,111,0.15); color:var(--red); }
+.lv-sl .lvl-px { color:var(--red); }
+.lv-ma .lvl-inner { background:rgba(79,195,247,0.3); }
+.lv-ma .lvl-tag { background:rgba(79,195,247,0.1); color:var(--blue); }
+.lv-ma .lvl-px { color:var(--blue); }
+
+/* ─── TRADE CARD ─── */
+.trade-card {
+  background:linear-gradient(135deg,#060F08 0%,#060C12 100%);
+  border:1px solid rgba(6,214,160,0.2);
+  border-radius:12px;
+  padding:20px 22px;
+  margin-bottom:12px;
+  position:relative;
+  overflow:hidden;
+}
+
+.trade-card::before {
+  content:'';
+  position:absolute; left:0; top:0; bottom:0;
+  width:3px;
+  background:var(--green);
+  box-shadow:0 0 16px var(--green);
+}
+
+.trade-top {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+
+.trade-dir {
+  font-family:'Bebas Neue', sans-serif;
+  font-size:2rem; color:var(--green); letter-spacing:3px;
+  display:flex; align-items:center; gap:10px;
+}
+
+.trade-arrow { animation: floatup 1.6s ease-in-out infinite; }
+@keyframes floatup {
+  0%,100% { transform:translateY(0); }
+  50% { transform:translateY(-5px); }
+}
+
+.rr-tag {
+  background:rgba(240,180,41,0.1); border:1px solid var(--gold-dim);
+  border-radius:5px; padding:4px 12px;
+  font-size:0.65rem; color:var(--gold); font-weight:500;
+}
+
+.trade-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+}
+
+.tg-item {
+  background:var(--bg4); border:1px solid var(--border);
+  border-radius:7px; padding:11px; text-align:center;
+}
+.tg-lbl { font-size:0.5rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:2px; margin-bottom:5px; }
+.tg-v { font-family:'Bebas Neue', sans-serif; font-size:1.1rem; line-height:1.1; }
+.tc-entry { color:var(--gold); }
+.tc-sl { color:var(--red); }
+.tc-tp1 { color:#5DFFC0; }
+.tc-tp2 { color:var(--green); }
+
+/* ─── AI ANALYSIS ─── */
+.ai-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:10px; padding:18px; margin-bottom:12px;
+}
+
+.ai-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+
+.ai-icon {
+  width:28px; height:28px; border-radius:6px;
+  background:linear-gradient(135deg, var(--gold-dim), var(--gold));
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.75rem; flex-shrink:0;
+}
+
+.ai-title { font-family:'Bebas Neue', sans-serif; font-size:1.1rem; letter-spacing:2px; color:var(--gold); }
+.ai-sub { font-size:0.55rem; color:var(--text-dim); letter-spacing:1px; margin-top:1px; }
+
+.ai-body { font-size:0.67rem; line-height:1.8; color:var(--text); }
+.ai-body strong { color:var(--gold-bright); }
+.ai-body .highlight { color:var(--green); font-weight:500; }
+.ai-body .warn { color:var(--red); font-weight:500; }
+
+/* ─── REASONS ─── */
+.reason {
+  display:flex; gap:12px;
+  padding:9px 0; border-bottom:1px solid rgba(26,37,53,0.5);
+}
+.reason:last-child { border-bottom:none; }
+.reason-n { font-family:'Bebas Neue'; font-size:0.8rem; color:var(--gold-dim); min-width:18px; padding-top:2px; }
+.reason-t { font-size:0.64rem; line-height:1.65; color:var(--text); }
+.reason-t strong { color:var(--gold); }
+
+/* ─── REFRESH BTN ─── */
+.refresh-btn {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(240,180,41,0.08); border:1px solid var(--gold-dim);
+  color:var(--gold); border-radius:6px; padding:7px 16px;
+  font-family:'DM Mono', monospace; font-size:0.62rem; letter-spacing:2px;
+  text-transform:uppercase; cursor:pointer; transition:all 0.2s;
+}
+.refresh-btn:hover { background:rgba(240,180,41,0.15); border-color:var(--gold); }
+.refresh-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.refresh-icon { transition:transform 0.5s; }
+.refresh-btn.spinning .refresh-icon { animation:spin 0.8s linear infinite; }
+
+/* ─── DISCLAIMER ─── */
+.disclaimer {
+  text-align:center; font-size:0.55rem; color:var(--text-dim);
+  margin-top:20px; padding-top:14px; border-top:1px solid var(--border);
+  line-height:1.7;
+}
+
+/* ─── PRICE FLASH ─── */
+@keyframes flashGreen { 0%,100% { color:var(--gold); } 50% { color:var(--green); } }
+@keyframes flashRed { 0%,100% { color:var(--gold); } 50% { color:var(--red); } }
+.flash-up { animation:flashGreen 0.6s ease; }
+.flash-down { animation:flashRed 0.6s ease; }
+
+/* ─── FADE IN ─── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.card, .ai-card, .trade-card, .hero { animation:fadeUp 0.4s ease both; }
+
+@media(max-width:900px) {
+  .g3,.g2,.g12 { grid-template-columns:1fr; }
+  .trade-grid { grid-template-columns:repeat(2,1fr); }
+  .hero { grid-template-columns:1fr; text-align:center; }
+  .hero-right { align-items:center; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-brand">AURUM TERMINAL</span>
+      <div class="live-badge"><div class="live-dot"></div> LIVE DATA</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span id="last-updated">Initializing...</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="initDashboard()">
+        <span class="refresh-icon">↻</span> Refresh Analysis
+      </button>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <div class="pair-name"><span class="xau">XAU</span><span class="slash">/</span><span class="usd">USD</span></div>
+      <div class="pair-sub">Spot Gold · Troy Ounce · USD</div>
+    </div>
+    <div class="price-hero">
+      <div id="live-price">——.——</div>
+      <div id="price-change" style="color:var(--text-dim)">Loading...</div>
+      <div id="price-range" style="color:var(--text-dim)">Fetching live data...</div>
+    </div>
+    <div class="hero-right">
+      <div id="bias-chip" class="bias-chip bias-neutral">ANALYZING...</div>
+      <div class="conf-wrap">
+        <div class="conf-label">Confidence</div>
+        <div class="conf-num" id="conf-num">—</div>
+        <div class="conf-sub" id="risk-label">Risk: —</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Technicals + RSI + Confidence -->
+  <div class="g3">
+
+    <!-- TECHNICALS -->
+    <div class="card" style="animation-delay:0.05s">
+      <div class="card-head"><span>Technical Indicators</span><span class="card-head-icon">📊</span></div>
+      <div id="tech-content">
+        <div class="loading-overlay"><div class="spinner"></div><span>Loading...</span></div>
+      </div>
+    </div>
+
+    <!-- RSI GAUGE -->
+    <div class="card" style="animation-delay:0.1s">
+      <div class="card-head"><span>RSI (14)</span><span class="card-head-icon">📈</span></div>
+      <div class="gauge-center">
+        <svg width="180" height="95" viewBox="0 0 180 95">
+          <path d="M 20 88 A 70 70 0 0 1 160 88" fill="none" stroke="#1A2535" stroke-width="11" stroke-linecap="round"/>
+          <path d="M 20 88 A 70 70 0 0 1 55 30" fill="none" stroke="rgba(239,71,111,0.2)" stroke-width="11" stroke-linecap="round"/>
+          <path d="M 125 30 A 70 70 0 0 1 160 88" fill="none" stroke="rgba(6,214,160,0.2)" stroke-width="11" stroke-linecap="round"/>
+          <path id="rsi-arc" d="M 20 88 A 70 70 0 0 1 90 18" fill="none" stroke="var(--gold)" stroke-width="11" stroke-linecap="round"
+            stroke-dasharray="220" stroke-dashoffset="220"/>
+          <text x="12" y="104" font-size="9" fill="#4A6282" font-family="DM Mono">0</text>
+          <text x="80" y="14" font-size="9" fill="#4A6282" font-family="DM Mono">50</text>
+          <text x="156" y="104" font-size="9" fill="#4A6282" font-family="DM Mono">100</text>
+          <text x="22" y="76" font-size="7" fill="rgba(239,71,111,0.5)" font-family="DM Mono">OS</text>
+          <text x="145" y="76" font-size="7" fill="rgba(6,214,160,0.5)" font-family="DM Mono">OB</text>
+        </svg>
+        <div class="gauge-num" id="rsi-num" style="color:var(--gold)">—</div>
+        <div class="gauge-lbl" id="rsi-label">Loading RSI...</div>
+      </div>
+    </div>
+
+    <!-- CONFIDENCE -->
+    <div class="card" style="animation-delay:0.15s">
+      <div class="card-head"><span>Conviction Score</span><span class="card-head-icon">🎯</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:0.6rem;color:var(--text-dim)">Overall Confidence</span>
+          <span id="conf-pct" style="font-size:0.6rem;color:var(--gold);font-weight:500;">—/100</span>
+        </div>
+        <div class="cbar-track"><div class="cbar-fill" id="cbar"></div></div>
+        <div id="conv-label" style="font-size:0.55rem;color:var(--text-dim);">Analyzing...</div>
+      </div>
+      <div id="sbar-content">
+        <div class="loading-overlay" style="padding:10px 0;"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Macro + Levels -->
+  <div class="g2">
+
+    <!-- MACRO -->
+    <div class="card" style="animation-delay:0.2s">
+      <div class="card-head"><span>Macro Environment</span><span class="card-head-icon">🌐</span></div>
+      <div id="macro-content">
+        <div class="loading-overlay"><div class="spinner"></div><span>Fetching macro data...</span></div>
+      </div>
+    </div>
+
+    <!-- LEVELS -->
+    <div class="card" style="animation-delay:0.25s">
+      <div class="card-head"><span>Key Price Levels</span><span class="card-head-icon">📐</span></div>
+      <div class="levels-viz" id="levels-viz">
+        <div class="loading-overlay" style="height:100%;"><div class="spinner"></div><span>Calculating levels...</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TRADE IDEA -->
+  <div class="trade-card" id="trade-section">
+    <div class="trade-top">
+      <div class="trade-dir"><span class="trade-arrow" id="trade-arrow">▲</span><span id="trade-direction">ANALYZING TRADE...</span></div>
+      <div class="rr-tag" id="rr-tag">R/R: Calculating</div>
+    </div>
+    <div class="trade-grid">
+      <div class="tg-item"><div class="tg-lbl">Entry Zone</div><div class="tg-v tc-entry" id="t-entry">—</div></div>
+      <div class="tg-item"><div class="tg-lbl">Stop Loss</div><div class="tg-v tc-sl" id="t-sl">—</div></div>
+      <div class="tg-item"><div class="tg-lbl">Take Profit 1</div><div class="tg-v tc-tp1" id="t-tp1">—</div></div>
+      <div class="tg-item"><div class="tg-lbl">Take Profit 2</div><div class="tg-v tc-tp2" id="t-tp2">—</div></div>
+    </div>
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="ai-card" id="ai-section">
+    <div class="ai-header">
+      <div class="ai-icon">✦</div>
+      <div>
+        <div class="ai-title">AI Macro Analysis</div>
+        <div class="ai-sub">Powered by Claude · Live Web Search · Auto-refreshed</div>
+      </div>
+    </div>
+    <div id="ai-body" class="ai-body">
+      <div class="loading-overlay"><div class="spinner"></div><span>Claude is analyzing live market data...</span></div>
+    </div>
+  </div>
+
+  <!-- REASONS -->
+  <div class="card" id="reasons-card" style="animation-delay:0.3s;margin-bottom:12px;">
+    <div class="card-head"><span>Key Reasons for Bias</span><span class="card-head-icon">🔍</span></div>
+    <div id="reasons-content">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠ This dashboard is AI-generated and for informational purposes only. It does not constitute financial advice.<br/>
+    All trading involves substantial risk of loss. Always apply proper risk management. Past performance is not indicative of future results.
+  </div>
+
+</div>
+
 <script>
-// ...all JS as provided by user...
+// ═══════════════════════════════════════════
+//  LIVE PRICE FETCHER (Open-Meteo metals API / fallback)
+// ═══════════════════════════════════════════
+let currentPrice = null;
+let prevPrice = null;
+
+async function fetchGoldPrice() {
+  // Try multiple free endpoints
+  const endpoints = [
+    'https://api.metals.live/v1/spot/gold',
+    'https://data-asg.goldprice.org/dbXRates/USD'
+  ];
+
+  // Primary: metals.live
+  try {
+    const res = await fetch('https://api.metals.live/v1/spot/gold', {cache:'no-cache'});
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && data[0].price) {
+        return { price: data[0].price, source: 'metals.live' };
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: goldprice.org
+  try {
+    const res = await fetch('https://data-asg.goldprice.org/dbXRates/USD', {cache:'no-cache'});
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.items && data.items[0]) {
+        return { price: data.items[0].xauPrice, source: 'goldprice.org' };
+      }
+    }
+  } catch(e) {}
+
+  return null;
+}
+
+function updatePriceUI(priceData) {
+  if (!priceData) return;
+  const price = parseFloat(priceData.price);
+  prevPrice = currentPrice;
+  currentPrice = price;
+
+  const el = document.getElementById('live-price');
+  el.textContent = '$' + price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  if (prevPrice !== null) {
+    const diff = price - prevPrice;
+    const pct = (diff / prevPrice * 100);
+    const changeEl = document.getElementById('price-change');
+    changeEl.textContent = (diff >= 0 ? '▲ +$' : '▼ -$') + Math.abs(diff).toFixed(2) + ' (' + Math.abs(pct).toFixed(2) + '%)';
+    changeEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+    el.classList.remove('flash-up','flash-down');
+    void el.offsetWidth;
+    el.classList.add(diff >= 0 ? 'flash-up' : 'flash-down');
+  }
+
+  document.getElementById('price-range').textContent = `Source: ${priceData.source} · Spot Price`;
+}
+
+// ═══════════════════════════════════════════
+//  CLAUDE AI ANALYSIS
+// ═══════════════════════════════════════════
+async function fetchClaudeAnalysis(price) {
+  const today = new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
+  const prompt = `You are a professional macro and forex analyst. Today is ${today}. The current XAUUSD spot price is $${price ? price.toFixed(2) : 'approximately 5,150-5,200'}.
+
+Use your web search tool to find the LATEST information on:
+1. DXY US Dollar Index current level and direction
+2. US 10-year Treasury yield current level
+3. Federal Reserve latest stance and rate cut expectations
+4. Key geopolitical events affecting gold today
+5. Gold market sentiment and news today
+6. XAUUSD RSI and key technical levels
+
+Then provide a complete trading analysis in this EXACT JSON format (respond with ONLY the JSON, no markdown):
+
+{
+  "bias": "Bullish" or "Bearish" or "Neutral",
+  "confidence": number 1-100,
+  "risk": "Low" or "Medium" or "High",
+  "rsi": number,
+  "rsi_label": "brief label e.g. Neutral / Cooling",
+  "ma50": number,
+  "ma200": number,
+  "atr": number,
+  "support": number,
+  "resistance": number,
+  "dxy": {"value": "e.g. 99.2", "direction": "Rising" or "Falling" or "Flat", "signal": "Bearish" or "Bullish" or "Neutral"},
+  "yield10y": {"value": "e.g. 4.11%", "direction": "Rising" or "Falling" or "Flat", "signal": "Bearish" or "Bullish" or "Neutral"},
+  "inflation": {"trend": "Rising" or "Falling" or "Stable", "signal": "Bullish" or "Bearish" or "Neutral"},
+  "fed": {"outlook": "brief description", "signal": "Bullish" or "Bearish" or "Neutral"},
+  "sentiment": {"news": "brief", "risk_mode": "Risk-Off" or "Risk-On" or "Mixed", "signal": "Bullish" or "Bearish" or "Neutral"},
+  "volume": {"trend": "Elevated" or "Normal" or "Low", "signal": "Bullish" or "Bearish" or "Neutral"},
+  "trade": {
+    "direction": "BUY" or "SELL" or "WAIT",
+    "entry_low": number,
+    "entry_high": number,
+    "stop_loss": number,
+    "tp1": number,
+    "tp2": number,
+    "rr": "e.g. 1:2 to 1:4"
+  },
+  "reasons": [
+    "reason 1 with <strong>key term</strong> tags allowed",
+    "reason 2",
+    "reason 3",
+    "reason 4",
+    "reason 5 about risks with <span class='warn'>warning text</span> if needed"
+  ],
+  "summary": "2-3 sentence prose summary of the overall market picture with <strong> and <span class='highlight'> or <span class='warn'> tags allowed",
+  "conviction_breakdown": [
+    {"name": "label", "pct": number, "color": "green" or "red" or "gold"},
+    {"name": "label", "pct": number, "color": "green" or "red" or "gold"},
+    {"name": "label", "pct": number, "color": "green" or "red" or "gold"},
+    {"name": "label", "pct": number, "color": "green" or "red" or "gold"}
+  ]
+}`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const data = await response.json();
+  const fullText = data.content
+    .map(b => b.type === 'text' ? b.text : '')
+    .filter(Boolean)
+    .join('\n');
+
+  // Parse JSON from response
+  const clean = fullText.replace(/```json|```/g, '').trim();
+  const jsonMatch = clean.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON found');
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ═══════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════
+function renderTechnicals(d, price) {
+  const p = price || currentPrice || 5150;
+  const ma50Signal = p > d.ma50 ? 'bull' : 'bear';
+  const ma200Signal = p > d.ma200 ? 'bull' : 'bear';
+  document.getElementById('tech-content').innerHTML = `
+    <div class="tech-row"><span class="tech-lbl">Spot Price</span><span class="tech-v" style="color:var(--gold)">$${p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+    <div class="tech-row"><span class="tech-lbl">MA 50</span><span class="tech-v">$${d.ma50.toLocaleString()} <span class="badge badge-${ma50Signal}">${p > d.ma50 ? 'ABOVE ↑' : 'BELOW ↓'}</span></span></div>
+    <div class="tech-row"><span class="tech-lbl">MA 200</span><span class="tech-v">$${d.ma200.toLocaleString()} <span class="badge badge-${ma200Signal}">${p > d.ma200 ? 'ABOVE ↑' : 'BELOW ↓'}</span></span></div>
+    <div class="tech-row"><span class="tech-lbl">ATR (14)</span><span class="tech-v" style="color:#FFB800">$${d.atr} <span class="badge badge-neut">VOLATILITY</span></span></div>
+    <div class="tech-row"><span class="tech-lbl">Support</span><span class="tech-v" style="color:var(--green)">$${d.support.toLocaleString()}</span></div>
+    <div class="tech-row"><span class="tech-lbl">Resistance</span><span class="tech-v" style="color:var(--red)">$${d.resistance.toLocaleString()}</span></div>
+  `;
+}
+
+function renderRSI(d) {
+  const rsi = d.rsi;
+  document.getElementById('rsi-num').textContent = rsi;
+  document.getElementById('rsi-label').textContent = d.rsi_label;
+
+  // Color based on level
+  const rsiEl = document.getElementById('rsi-num');
+  if (rsi > 70) { rsiEl.style.color = 'var(--red)'; }
+  else if (rsi < 30) { rsiEl.style.color = 'var(--green)'; }
+  else { rsiEl.style.color = 'var(--gold)'; }
+
+  // Animate arc: 0=left end (rsi=0), 220=full arc (rsi=100)
+  const offset = 220 - (rsi / 100 * 220);
+  const arc = document.getElementById('rsi-arc');
+  arc.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.25,1,0.5,1)';
+  arc.setAttribute('stroke-dashoffset', offset);
+}
+
+function renderConfidence(d) {
+  const c = d.confidence;
+  document.getElementById('conf-num').textContent = c;
+  document.getElementById('conf-pct').textContent = c + '/100';
+  document.getElementById('risk-label').textContent = 'Risk: ' + d.risk;
+  document.getElementById('conv-label').textContent =
+    c >= 80 ? 'HIGH CONVICTION' : c >= 60 ? 'MODERATE-HIGH CONVICTION' : c >= 40 ? 'MODERATE CONVICTION' : 'LOW CONVICTION';
+
+  setTimeout(() => {
+    document.getElementById('cbar').style.width = c + '%';
+  }, 300);
+
+  // Sentiment bars
+  const colorMap = { green: 'linear-gradient(90deg,#006644,var(--green))', red: 'linear-gradient(90deg,#660011,var(--red))', gold: 'linear-gradient(90deg,var(--gold-dim),var(--gold-bright))' };
+  const sbars = d.conviction_breakdown.map(s => `
+    <div class="sbar">
+      <div class="sbar-head">
+        <span class="sbar-name">${s.name}</span>
+        <span class="sbar-val" style="color:${s.color==='green'?'var(--green)':s.color==='red'?'var(--red)':'var(--gold)'}">${s.pct}%</span>
+      </div>
+      <div class="sbar-track"><div class="sbar-fill" data-w="${s.pct}" style="background:${colorMap[s.color] || colorMap.gold};"></div></div>
+    </div>
+  `).join('');
+  document.getElementById('sbar-content').innerHTML = sbars;
+
+  setTimeout(() => {
+    document.querySelectorAll('.sbar-fill').forEach(el => {
+      el.style.width = el.getAttribute('data-w') + '%';
+    });
+  }, 400);
+}
+
+function sigClass(sig) {
+  if (!sig) return 'neut';
+  const s = sig.toLowerCase();
+  if (s.includes('bull')) return 'bull';
+  if (s.includes('bear')) return 'bear';
+  return 'neut';
+}
+
+function renderMacro(d) {
+  const rows = [
+    { name:'DXY (US Dollar Index)', val:`${d.dxy.value} · ${d.dxy.direction}`, sig:d.dxy.signal },
+    { name:'US 10Y Treasury Yield', val:`${d.yield10y.value} · ${d.yield10y.direction}`, sig:d.yield10y.signal },
+    { name:'Inflation Trend', val:d.inflation.trend, sig:d.inflation.signal },
+    { name:'Federal Reserve Outlook', val:d.fed.outlook, sig:d.fed.signal },
+    { name:'Risk Sentiment', val:d.sentiment.risk_mode, sig:d.sentiment.signal },
+    { name:'News Sentiment', val:d.sentiment.news, sig:d.sentiment.signal },
+    { name:'Volume Trend', val:d.volume.trend, sig:d.volume.signal },
+  ];
+  document.getElementById('macro-content').innerHTML = rows.map(r => {
+    const sc = sigClass(r.sig);
+    const sigLabel = r.sig || 'Neutral';
+    return `<div class="macro-row">
+      <div class="macro-name-wrap">
+        <span class="macro-name">${r.name}</span>
+        <span class="macro-val">${r.val}</span>
+      </div>
+      <div class="sig"><div class="dot dot-${sc}"></div><span class="${sc}">${sigLabel.toUpperCase()}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderLevels(d, price) {
+  const p = price || currentPrice || 5150;
+  const tp2 = d.trade.tp2;
+  const tp1 = d.trade.tp1;
+  const res = d.resistance;
+  const sup = d.support;
+  const sl = d.trade.stop_loss;
+  const ma50 = d.ma50;
+
+  // Map price to % position in viz (top=high, bottom=low)
+  const allPrices = [tp2, res, tp1, p, sup, sl, ma50];
+  const maxP = Math.max(...allPrices) * 1.01;
+  const minP = Math.min(...allPrices) * 0.99;
+  const toY = v => ((maxP - v) / (maxP - minP) * 90 + 5);
+
+  const levels = [
+    { label:'TP2', price:tp2, cls:'lv-res' },
+    { label:'RESISTANCE', price:res, cls:'lv-res' },
+    { label:'TP1', price:tp1, cls:'lv-res' },
+    { label:'◆ SPOT', price:p, cls:'lv-spot' },
+    { label:'ENTRY / SUP', price:sup, cls:'lv-sup' },
+    { label:'STOP LOSS', price:sl, cls:'lv-sl' },
+    { label:'MA 50', price:ma50, cls:'lv-ma' },
+  ];
+
+  document.getElementById('levels-viz').innerHTML = levels.map(l => `
+    <div class="lvl-line ${l.cls}" style="top:${toY(l.price)}%">
+      <div class="lvl-tag">${l.label}</div>
+      <div class="lvl-inner"></div>
+      <div class="lvl-px">$${l.price.toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+function renderTrade(d) {
+  const t = d.trade;
+  const isWait = t.direction === 'WAIT';
+  const isBuy = t.direction === 'BUY';
+
+  document.getElementById('trade-arrow').textContent = isWait ? '—' : isBuy ? '▲' : '▼';
+  document.getElementById('trade-arrow').style.color = isWait ? 'var(--gold)' : isBuy ? 'var(--green)' : 'var(--red)';
+  document.getElementById('trade-direction').textContent = t.direction + (isWait ? '' : isBuy ? ' ON DIP — PULLBACK ENTRY' : ' INTO STRENGTH');
+  document.getElementById('trade-direction').style.color = isWait ? 'var(--gold)' : isBuy ? 'var(--green)' : 'var(--red)';
+  document.getElementById('rr-tag').textContent = 'R/R: ' + t.rr;
+  document.getElementById('t-entry').textContent = `$${t.entry_low.toLocaleString()} – $${t.entry_high.toLocaleString()}`;
+  document.getElementById('t-sl').textContent = '$' + t.stop_loss.toLocaleString();
+  document.getElementById('t-tp1').textContent = '$' + t.tp1.toLocaleString();
+  document.getElementById('t-tp2').textContent = '$' + t.tp2.toLocaleString();
+}
+
+function renderHero(d) {
+  const biasEl = document.getElementById('bias-chip');
+  biasEl.textContent = (d.bias === 'Bullish' ? '⬆ ' : d.bias === 'Bearish' ? '⬇ ' : '— ') + d.bias.toUpperCase();
+  biasEl.className = 'bias-chip ' + (d.bias === 'Bullish' ? 'bias-bullish' : d.bias === 'Bearish' ? 'bias-bearish' : 'bias-neutral');
+  document.getElementById('conf-num').textContent = d.confidence;
+  document.getElementById('risk-label').textContent = 'Risk: ' + d.risk;
+}
+
+function renderAI(d) {
+  document.getElementById('ai-body').innerHTML = `<p>${d.summary}</p>`;
+}
+
+function renderReasons(d) {
+  document.getElementById('reasons-content').innerHTML = d.reasons.map((r, i) => `
+    <div class="reason">
+      <div class="reason-n">${String(i+1).padStart(2,'0')}</div>
+      <div class="reason-t">${r}</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+//  MAIN INIT
+// ═══════════════════════════════════════════
+async function initDashboard() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  document.getElementById('last-updated').textContent = 'Updating...';
+
+  // 1. Fetch live price
+  const priceData = await fetchGoldPrice();
+  if (priceData) updatePriceUI(priceData);
+  const price = priceData ? parseFloat(priceData.price) : null;
+
+  // 2. Fetch Claude AI analysis
+  try {
+    const analysis = await fetchClaudeAnalysis(price);
+
+    renderHero(analysis);
+    renderTechnicals(analysis, price);
+    renderRSI(analysis);
+    renderConfidence(analysis);
+    renderMacro(analysis);
+    renderLevels(analysis, price);
+    renderTrade(analysis);
+    renderAI(analysis);
+    renderReasons(analysis);
+
+    const now = new Date();
+    document.getElementById('last-updated').textContent =
+      'Updated: ' + now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+  } catch(err) {
+    document.getElementById('ai-body').innerHTML = `<div style="color:var(--red);font-size:0.65rem;">⚠ Analysis failed: ${err.message}. Please refresh.</div>`;
+    document.getElementById('last-updated').textContent = 'Update failed — retry';
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('spinning');
+}
+
+// Auto-refresh price every 60 seconds silently
+setInterval(async () => {
+  const priceData = await fetchGoldPrice();
+  if (priceData) updatePriceUI(priceData);
+}, 60000);
+
+// Init on load
+initDashboard();
 </script>
 </body>
 </html>
