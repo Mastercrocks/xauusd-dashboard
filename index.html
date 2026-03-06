@@ -734,10 +734,28 @@ async function fetchAIAnalysis(price, pair) {
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    let message = `API error: ${response.status}`;
+    try {
+      const err = await response.json();
+      if (err && err.error) {
+        message = err.error;
+      }
+    } catch (e) {}
+    throw new Error(message);
   }
 
   return await response.json();
+}
+
+function renderUnavailable(message) {
+  const txt = message || 'Live data unavailable';
+  document.getElementById('bias-chip').textContent = 'DATA UNAVAILABLE';
+  document.getElementById('bias-chip').className = 'bias-chip bias-neutral';
+  document.getElementById('tech-content').innerHTML = `<div class="loading-overlay"><span>${txt}</span></div>`;
+  document.getElementById('macro-content').innerHTML = `<div class="loading-overlay"><span>${txt}</span></div>`;
+  document.getElementById('levels-viz').innerHTML = `<div class="loading-overlay" style="height:100%;"><span>${txt}</span></div>`;
+  document.getElementById('sbar-content').innerHTML = `<div class="loading-overlay"><span>${txt}</span></div>`;
+  document.getElementById('reasons-content').innerHTML = `<div class="loading-overlay"><span>${txt}</span></div>`;
 }
 
 // G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
@@ -944,6 +962,7 @@ async function initDashboard() {
   } catch(err) {
     document.getElementById('ai-body').innerHTML = `<div style="color:var(--red);font-size:0.65rem;">G�� Analysis failed: ${err.message}. Please refresh.</div>`;
     document.getElementById('last-updated').textContent = 'Update failed G�� retry';
+    renderUnavailable(err.message);
   }
 
   btn.disabled = false;
