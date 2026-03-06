@@ -42,6 +42,66 @@ const PAIR_YAHOO_SYMBOLS = {
   USDCAD: 'USDCAD=X',
 };
 
+const NEWS_QUERY_BY_PAIR = {
+  XAUUSD: 'gold price OR XAUUSD OR treasury yields OR dollar index',
+  EURUSD: 'EURUSD OR euro dollar OR ECB OR Federal Reserve',
+  GBPUSD: 'GBPUSD OR pound dollar OR Bank of England OR Federal Reserve',
+  USDJPY: 'USDJPY OR yen dollar OR Bank of Japan OR US yields',
+  AUDUSD: 'AUDUSD OR Australian dollar OR RBA OR China economy',
+  BTCUSD: 'bitcoin price OR BTCUSD OR crypto market OR ETF flows',
+  NZDUSD: 'NZDUSD OR New Zealand dollar OR RBNZ OR risk sentiment',
+  USDCAD: 'USDCAD OR Canadian dollar OR Bank of Canada OR oil prices',
+};
+
+const POSITIVE_NEWS_TERMS = [
+  'rally',
+  'surge',
+  'gains',
+  'dovish',
+  'rate cut',
+  'easing',
+  'weaker dollar',
+  'yield falls',
+  'beats estimates',
+  'safe-haven demand',
+];
+
+const NEGATIVE_NEWS_TERMS = [
+  'selloff',
+  'falls',
+  'drop',
+  'hawkish',
+  'higher yields',
+  'strong dollar',
+  'tightening',
+  'misses estimates',
+  'rate hike',
+  'risk-on equities',
+];
+
+const RISK_OFF_TERMS = [
+  'war',
+  'geopolitical',
+  'recession',
+  'uncertainty',
+  'risk-off',
+  'market stress',
+  'banking stress',
+  'conflict',
+];
+
+const RISK_ON_TERMS = [
+  'risk-on',
+  'stocks rally',
+  'equity gains',
+  'optimism',
+  'soft landing',
+  'strong earnings',
+];
+
+const LIVE_CONTEXT_CACHE = new Map();
+const LIVE_CONTEXT_TTL_MS = 90 * 1000;
+
 function withTimeout(ms = 8000) {
   return AbortSignal.timeout(ms);
 }
@@ -189,6 +249,314 @@ async function fetchCoingeckoBtcUsd() {
   };
 }
 
+function decodeHtmlEntities(text) {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function parseStooqLine(csvLine) {
+  const parts = csvLine.trim().split(',');
+  if (parts.length < 7) {
+    throw new Error('Invalid Stooq format');
+  }
+
+  const open = Number.parseFloat(parts[3]);
+  const high = Number.parseFloat(parts[4]);
+  const low = Number.parseFloat(parts[5]);
+  const close = Number.parseFloat(parts[6]);
+
+  if (!Number.isFinite(close) || close <= 0) {
+    throw new Error('Stooq close price unavailable');
+  }
+
+  return {
+    open,
+    high,
+    low,
+    close,
+  };
+}
+
+async function fetchStooqSymbol(symbol) {
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(symbol)}&i=d`;
+  const response = await fetch(url, {
+    signal: withTimeout(5000),
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Stooq status ${response.status}`);
+  }
+
+  const line = (await response.text()).trim();
+  return parseStooqLine(line);
+}
+
+async function fetchFredSeries(seriesId, takeLast = 3) {
+  const response = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(seriesId)}`, {
+    signal: withTimeout(7000),
+    headers: { Accept: 'text/csv' },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FRED ${seriesId} status ${response.status}`);
+  }
+
+  const csv = await response.text();
+  const lines = csv.split(/\r?\n/).slice(1);
+  const values = [];
+
+  for (const line of lines) {
+    if (!line) continue;
+    const [date, raw] = line.split(',');
+    const value = Number.parseFloat(raw);
+    if (Number.isFinite(value)) {
+      values.push({ date, value });
+    }
+  }
+
+  if (values.length < 2) {
+    throw new Error(`FRED ${seriesId} has insufficient data`);
+  }
+
+  return values.slice(-takeLast);
+}
+
+function classifyDirection(current, previous, pctThreshold = 0.2) {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) {
+    return 'Flat';
+  }
+
+  const pct = ((current - previous) / Math.abs(previous)) * 100;
+  if (pct > pctThreshold) {
+    return 'Rising';
+  }
+  if (pct < -pctThreshold) {
+    return 'Falling';
+  }
+  return 'Flat';
+}
+
+function classifySignalFromDirection(direction, bullishOnRising = false) {
+  if (direction === 'Rising') {
+    return bullishOnRising ? 'Bullish' : 'Bearish';
+  }
+  if (direction === 'Falling') {
+    return bullishOnRising ? 'Bearish' : 'Bullish';
+  }
+  return 'Neutral';
+}
+
+function extractRssItems(xml, limit = 8) {
+  const items = [];
+  const regex = /<item>([\s\S]*?)<\/item>/gi;
+  let match;
+
+  while ((match = regex.exec(xml)) && items.length < limit) {
+    const itemXml = match[1];
+    const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/i);
+    const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/i);
+    const rawTitle = titleMatch?.[1] || titleMatch?.[2] || '';
+    if (!rawTitle) continue;
+
+    const cleanTitle = decodeHtmlEntities(rawTitle)
+      .replace(/\s+-\s+[^-]+$/, '')
+      .trim();
+
+    if (!cleanTitle) continue;
+
+    items.push({
+      title: cleanTitle,
+      publishedAt: pubDateMatch?.[1] || '',
+    });
+  }
+
+  return items;
+}
+
+function summarizeNewsAndSentiment(headlines, pair) {
+  if (!headlines.length) {
+    return {
+      sentiment: { news: 'No recent verified headlines found', risk_mode: 'Mixed', signal: 'Neutral' },
+      headlineSummary: [],
+      sentimentLabel: 'Mixed',
+      sentimentScore: 0,
+    };
+  }
+
+  const joined = headlines.map((h) => h.title.toLowerCase()).join(' | ');
+  let score = 0;
+
+  for (const term of POSITIVE_NEWS_TERMS) {
+    if (joined.includes(term)) score += 1;
+  }
+  for (const term of NEGATIVE_NEWS_TERMS) {
+    if (joined.includes(term)) score -= 1;
+  }
+
+  const sentimentLabel = score >= 2 ? 'Bullish' : score <= -2 ? 'Bearish' : 'Mixed';
+  const hasRiskOff = RISK_OFF_TERMS.some((term) => joined.includes(term));
+  const hasRiskOn = RISK_ON_TERMS.some((term) => joined.includes(term));
+  const riskMode = hasRiskOff ? 'Risk-Off' : hasRiskOn ? 'Risk-On' : 'Mixed';
+
+  let signal = 'Neutral';
+  if (pair === 'XAUUSD') {
+    signal = sentimentLabel === 'Bullish' ? 'Bullish' : sentimentLabel === 'Bearish' ? 'Bearish' : 'Neutral';
+  } else {
+    signal = sentimentLabel === 'Bullish' ? 'Bullish' : sentimentLabel === 'Bearish' ? 'Bearish' : 'Neutral';
+  }
+
+  const shortNews = headlines.slice(0, 2).map((h) => h.title).join(' | ');
+
+  return {
+    sentiment: {
+      news: shortNews,
+      risk_mode: riskMode,
+      signal,
+    },
+    headlineSummary: headlines.slice(0, 5),
+    sentimentLabel,
+    sentimentScore: score,
+  };
+}
+
+async function fetchLiveNews(pair) {
+  const query = NEWS_QUERY_BY_PAIR[pair] || `${pair} forex macro`; 
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const response = await fetch(url, {
+    signal: withTimeout(7000),
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      Accept: 'application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`News RSS status ${response.status}`);
+  }
+
+  const xml = await response.text();
+  return extractRssItems(xml, 8);
+}
+
+async function fetchLiveMacroContext(pair) {
+  const cacheKey = `live_ctx_${pair}`;
+  const cached = LIVE_CONTEXT_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < LIVE_CONTEXT_TTL_MS) {
+    return cached.data;
+  }
+
+  const fallbackContext = {
+    dxy: { value: 'Unavailable', direction: 'Unknown', signal: 'Neutral' },
+    yield10y: { value: 'Unavailable', direction: 'Unknown', signal: 'Neutral' },
+    inflation: { trend: 'Unknown', signal: 'Neutral' },
+    fed: { outlook: 'Unknown', signal: 'Neutral' },
+    sentiment: { news: 'No recent verified headlines found', risk_mode: 'Mixed', signal: 'Neutral' },
+    volume: { trend: 'Unavailable', signal: 'Neutral' },
+    headlines: [],
+    sourceHealth: {
+      dxy: false,
+      yield10y: false,
+      inflation: false,
+      fed: false,
+      news: false,
+    },
+  };
+
+  const tasks = await Promise.allSettled([
+    fetchStooqSymbol('dx.f'),
+    fetchFredSeries('DGS10', 3),
+    fetchFredSeries('CPIAUCSL', 3),
+    fetchFredSeries('FEDFUNDS', 3),
+    fetchLiveNews(pair),
+  ]);
+
+  if (tasks[0].status === 'fulfilled') {
+    const dxy = tasks[0].value;
+    const dxyDirection = classifyDirection(dxy.close, dxy.open, 0.05);
+    fallbackContext.dxy = {
+      value: dxy.close.toFixed(3),
+      direction: dxyDirection,
+      signal: classifySignalFromDirection(dxyDirection, false),
+    };
+    fallbackContext.sourceHealth.dxy = true;
+  }
+
+  if (tasks[1].status === 'fulfilled') {
+    const values = tasks[1].value;
+    const latest = values[values.length - 1].value;
+    const previous = values[values.length - 2].value;
+    const direction = classifyDirection(latest, previous, 0.25);
+    fallbackContext.yield10y = {
+      value: `${latest.toFixed(2)}%`,
+      direction,
+      signal: classifySignalFromDirection(direction, false),
+    };
+    fallbackContext.sourceHealth.yield10y = true;
+  }
+
+  if (tasks[2].status === 'fulfilled') {
+    const values = tasks[2].value;
+    const latest = values[values.length - 1].value;
+    const previous = values[values.length - 2].value;
+    const mom = ((latest - previous) / previous) * 100;
+    const trend = mom > 0.15 ? 'Rising' : mom < -0.05 ? 'Falling' : 'Stable';
+    const signal = trend === 'Rising' ? 'Bullish' : trend === 'Falling' ? 'Bearish' : 'Neutral';
+    fallbackContext.inflation = {
+      trend: `${trend} (${mom.toFixed(2)}% MoM)`,
+      signal,
+    };
+    fallbackContext.sourceHealth.inflation = true;
+  }
+
+  if (tasks[3].status === 'fulfilled') {
+    const values = tasks[3].value;
+    const latest = values[values.length - 1].value;
+    const previous = values[values.length - 2].value;
+    const delta = latest - previous;
+    let outlook = 'Holding steady';
+    let signal = 'Neutral';
+
+    if (delta >= 0.05) {
+      outlook = 'Tightening bias';
+      signal = 'Bearish';
+    } else if (delta <= -0.05) {
+      outlook = 'Easing bias';
+      signal = 'Bullish';
+    }
+
+    fallbackContext.fed = {
+      outlook: `${outlook} (${latest.toFixed(2)}%)`,
+      signal,
+    };
+    fallbackContext.sourceHealth.fed = true;
+  }
+
+  if (tasks[4].status === 'fulfilled') {
+    const headlines = tasks[4].value;
+    const summary = summarizeNewsAndSentiment(headlines, pair);
+    fallbackContext.sentiment = summary.sentiment;
+    fallbackContext.headlines = summary.headlineSummary;
+    fallbackContext.sourceHealth.news = true;
+  }
+
+  fallbackContext.volume = {
+    trend: fallbackContext.sourceHealth.news ? 'Normal' : 'Unavailable',
+    signal: 'Neutral',
+  };
+
+  LIVE_CONTEXT_CACHE.set(cacheKey, {
+    timestamp: Date.now(),
+    data: fallbackContext,
+  });
+
+  return fallbackContext;
+}
+
 function getMockAnalysis(price, pair) {
   const p = Number(price || getMockPriceForPair(pair));
   const scale = pair === 'BTCUSD' ? 250 : pair === 'XAUUSD' ? 8 : 0.003;
@@ -236,18 +604,40 @@ function getMockAnalysis(price, pair) {
   };
 }
 
-function getLiveRuleBasedAnalysis(price, pair) {
+function getLiveRuleBasedAnalysis(price, pair, liveContext) {
   const p = Number(price);
+  const ctx = liveContext || {
+    dxy: { value: 'Unavailable', direction: 'Unknown', signal: 'Neutral' },
+    yield10y: { value: 'Unavailable', direction: 'Unknown', signal: 'Neutral' },
+    inflation: { trend: 'Unknown', signal: 'Neutral' },
+    fed: { outlook: 'Unknown', signal: 'Neutral' },
+    sentiment: { news: 'No recent verified headlines found', risk_mode: 'Mixed', signal: 'Neutral' },
+    volume: { trend: 'Unavailable', signal: 'Neutral' },
+    headlines: [],
+  };
+
   const scale = pair === 'BTCUSD' ? Math.max(p * 0.01, 100) : pair === 'XAUUSD' ? 8 : Math.max(p * 0.002, 0.002);
-  const ma50 = p - scale * 1.5;
-  const ma200 = p - scale * 3;
-  const trendUp = p > ma200;
+
+  const macroScore =
+    (ctx.dxy.signal === 'Bullish' ? 1 : ctx.dxy.signal === 'Bearish' ? -1 : 0) +
+    (ctx.yield10y.signal === 'Bullish' ? 1 : ctx.yield10y.signal === 'Bearish' ? -1 : 0) +
+    (ctx.inflation.signal === 'Bullish' ? 1 : ctx.inflation.signal === 'Bearish' ? -1 : 0) +
+    (ctx.fed.signal === 'Bullish' ? 1 : ctx.fed.signal === 'Bearish' ? -1 : 0) +
+    (ctx.sentiment.signal === 'Bullish' ? 1 : ctx.sentiment.signal === 'Bearish' ? -1 : 0);
+
+  const trendUp = macroScore >= 0;
+  const ma50 = p * (trendUp ? 0.999 : 1.001);
+  const ma200 = p * (trendUp ? 0.998 : 1.002);
   const rsi = trendUp ? 56 : 44;
+  const confidence = Math.min(72, Math.max(48, 55 + macroScore * 3));
+  const risk = ctx.volume.trend === 'Unavailable' ? 'High' : 'Medium';
+
+  const headlines = (ctx.headlines || []).slice(0, 2).map((h) => h.title);
 
   return {
     bias: trendUp ? 'Bullish' : 'Bearish',
-    confidence: 58,
-    risk: 'Medium',
+    confidence,
+    risk,
     rsi,
     rsi_label: rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Neutral',
     ma50: Number(ma50.toFixed(5)),
@@ -255,12 +645,12 @@ function getLiveRuleBasedAnalysis(price, pair) {
     atr: Number((scale * 2.2).toFixed(5)),
     support: Number((p - scale * 2).toFixed(5)),
     resistance: Number((p + scale * 2).toFixed(5)),
-    dxy: { value: 'Live feed unavailable', direction: 'Unknown', signal: 'Neutral' },
-    yield10y: { value: 'Live feed unavailable', direction: 'Unknown', signal: 'Neutral' },
-    inflation: { trend: 'Unknown', signal: 'Neutral' },
-    fed: { outlook: 'Unknown', signal: 'Neutral' },
-    sentiment: { news: 'No verified live news feed configured', risk_mode: 'Mixed', signal: 'Neutral' },
-    volume: { trend: 'Unknown', signal: 'Neutral' },
+    dxy: ctx.dxy,
+    yield10y: ctx.yield10y,
+    inflation: ctx.inflation,
+    fed: ctx.fed,
+    sentiment: ctx.sentiment,
+    volume: ctx.volume,
     trade: {
       direction: trendUp ? 'BUY' : 'SELL',
       entry_low: Number((p - scale * 0.4).toFixed(5)),
@@ -272,19 +662,44 @@ function getLiveRuleBasedAnalysis(price, pair) {
     },
     reasons: [
       `Rule-based analysis derived from live ${pair} spot price ${p.toFixed(5)}.`,
-      `Price is ${trendUp ? 'above' : 'below'} MA200 proxy, indicating ${trendUp ? 'uptrend' : 'downtrend'} bias.`,
-      'AI/news confirmation unavailable; this is technical fallback from live price only.',
-      'Use independent news verification before executing trades.',
-      'Apply strict risk management due reduced macro/news context.',
+      `DXY is ${ctx.dxy.direction} (${ctx.dxy.value}) and US10Y is ${ctx.yield10y.direction} (${ctx.yield10y.value}).`,
+      `Inflation trend: ${ctx.inflation.trend}; Fed: ${ctx.fed.outlook}.`,
+      headlines[0] ? `Headline: ${headlines[0]}` : 'No verified headline available in current window.',
+      headlines[1] ? `Headline: ${headlines[1]}` : 'AI confirmation unavailable, using live macro + technical rules.',
     ],
-    summary: `Live price received for ${pair}. AI/news confirmation unavailable, so this output is a rule-based technical fallback from real-time price only.`,
+    summary: `Live price and macro/news context received for ${pair}. AI generation unavailable, so this output uses live-data rule logic.`,
     conviction_breakdown: [
-      { name: 'Technical', pct: 58, color: 'green' },
-      { name: 'Macro', pct: 30, color: 'red' },
-      { name: 'Sentiment', pct: 25, color: 'red' },
-      { name: 'Risk', pct: 55, color: 'gold' },
+      { name: 'Technical', pct: 58, color: trendUp ? 'green' : 'red' },
+      { name: 'Macro', pct: Math.min(75, Math.max(35, 50 + macroScore * 5)), color: macroScore >= 0 ? 'green' : 'red' },
+      { name: 'Sentiment', pct: ctx.sentiment.signal === 'Neutral' ? 50 : 62, color: ctx.sentiment.signal === 'Bullish' ? 'green' : ctx.sentiment.signal === 'Bearish' ? 'red' : 'gold' },
+      { name: 'Risk', pct: risk === 'High' ? 45 : 60, color: risk === 'High' ? 'red' : 'green' },
     ],
   };
+}
+
+function mergeAnalysisWithLiveContext(analysis, liveContext) {
+  const merged = {
+    ...analysis,
+    dxy: liveContext.dxy,
+    yield10y: liveContext.yield10y,
+    inflation: liveContext.inflation,
+    fed: liveContext.fed,
+    sentiment: liveContext.sentiment,
+    volume: liveContext.volume,
+  };
+
+  if (!Array.isArray(merged.reasons)) {
+    merged.reasons = [];
+  }
+
+  if ((liveContext.headlines || []).length) {
+    merged.reasons = [
+      ...merged.reasons,
+      `Headline: ${liveContext.headlines[0].title}`,
+    ].slice(0, 5);
+  }
+
+  return merged;
 }
 
 // API endpoint for price fetching
@@ -407,21 +822,43 @@ app.post('/api/analysis', async (req, res) => {
   console.log('Analysis request received:', req.body);
   const price = req.body?.price;
   const pair = String(req.body?.pair || 'XAUUSD').toUpperCase();
+  const numericPrice = Number(price);
+  let liveContext = {
+    dxy: { value: 'Unavailable', direction: 'Unknown', signal: 'Neutral' },
+    yield10y: { value: 'Unavailable', direction: 'Unknown', signal: 'Neutral' },
+    inflation: { trend: 'Unknown', signal: 'Neutral' },
+    fed: { outlook: 'Unknown', signal: 'Neutral' },
+    sentiment: { news: 'No recent verified headlines found', risk_mode: 'Mixed', signal: 'Neutral' },
+    volume: { trend: 'Unavailable', signal: 'Neutral' },
+    headlines: [],
+  };
+
   try {
     const pairLabel = PAIR_LABELS[pair] || pair;
+    liveContext = await fetchLiveMacroContext(pair);
     const apiKey = process.env.VITE_OPENAI_API_KEY;
 
     console.log('API Key present:', !!apiKey);
     if (!apiKey) {
-      if (!Number.isFinite(Number(price))) {
+      if (!Number.isFinite(numericPrice)) {
         return res.status(503).json({ error: 'Live analysis unavailable: missing live price and OpenAI key.' });
       }
       console.log('OpenAI key missing, returning live rule-based analysis');
-      return res.json(getLiveRuleBasedAnalysis(Number(price), pair));
+      return res.json(getLiveRuleBasedAnalysis(numericPrice, pair, liveContext));
     }
 
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    const prompt = `You are a professional macro and forex analyst. Today is ${today}. The current ${pair} (${pairLabel}) spot price is $${price ? Number(price).toFixed(5) : 'unknown'}.
+    const liveHeadlines = (liveContext.headlines || []).slice(0, 3).map((h, i) => `${i + 1}. ${h.title}`).join('\n');
+    const prompt = `You are a professional macro and forex analyst. Today is ${today}. The current ${pair} (${pairLabel}) spot price is $${Number.isFinite(numericPrice) ? numericPrice.toFixed(5) : 'unknown'}.
+
+LIVE MACRO CONTEXT (use these values as factual inputs):
+- DXY: ${liveContext.dxy.value} (${liveContext.dxy.direction}, signal ${liveContext.dxy.signal})
+- US10Y: ${liveContext.yield10y.value} (${liveContext.yield10y.direction}, signal ${liveContext.yield10y.signal})
+- Inflation: ${liveContext.inflation.trend} (signal ${liveContext.inflation.signal})
+- Fed outlook: ${liveContext.fed.outlook} (signal ${liveContext.fed.signal})
+- News sentiment summary: ${liveContext.sentiment.news}
+- Risk mode: ${liveContext.sentiment.risk_mode}
+- Headlines:\n${liveHeadlines || 'No recent verified headlines'}
 
 Based on your knowledge of current market conditions, provide a complete trading analysis in this EXACT JSON format (respond with ONLY the JSON, no markdown):
 
@@ -508,12 +945,13 @@ Based on your knowledge of current market conditions, provide a complete trading
 
     const analysis = JSON.parse(jsonMatch[0]);
     console.log('Analysis parsed successfully');
-    res.json(analysis);
+    const merged = mergeAnalysisWithLiveContext(analysis, liveContext);
+    res.json(merged);
 
   } catch (error) {
     console.error('Analysis error:', error);
-    if (Number.isFinite(Number(price))) {
-      const liveRuleBased = getLiveRuleBasedAnalysis(Number(price), pair);
+    if (Number.isFinite(numericPrice)) {
+      const liveRuleBased = getLiveRuleBasedAnalysis(numericPrice, pair, liveContext);
       console.log('Returning live rule-based analysis due to AI error');
       return res.json(liveRuleBased);
     }
